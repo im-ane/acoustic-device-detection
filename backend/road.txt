@@ -1,0 +1,41 @@
+------------1----------------
+Audio Loading
+→ utils/audio.py
+-----------2------------------
+Filtering (DSP)
+→ dsp/filter.py
+------------3---------------
+Segmentation
+→ dsp/segmentation.py
+---------------4----------------
+FFT / Spectral Analysis
+→ dsp/fft.py
+--------------5------------------
+Feature Extraction
+→ features/extractor.py
+-------------6---------------
+Dataset Builder (save features + labels)
+→ data/dataset.py
+------------7----------------
+Model Training (ML)
+→ models/train.py
+--------8-----------
+Prediction / Inference
+→ models/predict.py
+---------9----------
+Pipeline (liaison de toutes les étapes)
+→ pipeline.py
+---------10------------
+API Endpoint (FastAPI route)
+→ api/routes/analyze.py
+
+
+
+	
+Response body
+Download
+{
+  "device": "filtered +segmented ",
+  "confidence": 0.00047571221516816496,
+  "num_segments": 21
+}

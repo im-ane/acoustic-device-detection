@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# virtual env
+venv/
+.env
+
+# data lourde
+data/raw/
+data/processed/
+data/features/
+data/datasets/
+
+# modèles
+backend/models_saved/
+
+# OS
+.DS_Store
