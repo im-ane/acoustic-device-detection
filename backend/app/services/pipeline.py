@@ -1,8 +1,8 @@
-from app.utils.audio import load_audio
-from app.dsp.filter import low_pass_filter
-from app.dsp.segmentation import split_signal
+from backend.app.utils.audio import load_audio
+from backend.app.dsp.filter import low_pass_filter
+from backend.app.dsp.segmentation import split_signal
 import numpy as np
-from app.features.spectral import extract_features
+from backend.app.features.spectral import extract_features
 
 def analyze_audio(file):
 

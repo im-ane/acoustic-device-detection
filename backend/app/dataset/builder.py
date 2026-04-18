@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from app.core.config import RAW_DATA_DIR
+from backend.app.core.config import RAW_DATA_DIR
 from backend.app.core.config import DATA_DIR
 import numpy as np
 
@@ -48,3 +48,12 @@ def load_dataset():
     y = np.load(os.path.join(path, "y.npy"))
 
     return X, y
+
+def build_dataset():
+    esc50_data = load_esc50()
+    personal_data = load_personal()
+
+    # Combine datasets and preprocess
+    # ... (preprocessing logic)
+
+    return esc50_data,personal_data

@@ -1,5 +1,5 @@
 
-from app.dsp.fft import compute_fft
+from backend.app.dsp.fft import compute_fft
 import numpy as np
 
 
