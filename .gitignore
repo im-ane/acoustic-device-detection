@@ -16,4 +16,4 @@ data/datasets/
 backend/models_saved/
 
 # OS
-.DS_Store
+.DS_Store.env
