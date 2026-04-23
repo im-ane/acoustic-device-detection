@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignalSense — Acoustic Device Classifier</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080a08;--bg2:#0e110d;--bg3:#131710;--bg4:#191e16;--bg5:#1e2419;
+  --green:#00ff87;--green2:#00cc6a;--green3:#009950;--greendim:#00ff8715;--greendim2:#00ff8730;
+  --cyan:#00e5ff;--cyandim:#00e5ff15;
+  --amber:#ffb300;--red:#ff4444;
+  --txt:#ddecd0;--txt2:#7a9a6e;--txt3:#4a6040;--txt4:#2e3d28;
+  --border:#1e2a1a;--border2:#2a3a24;--border3:#364830;
+  --card:#0c0f0b;
+  --sidebar:220px;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--txt);font-family:'Space Grotesk',sans-serif;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;flex-shrink:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--green);letter-spacing:.15em;min-width:var(--sidebar);padding-right:20px;border-right:1px solid var(--border)}
+.logo-bars{display:flex;gap:3px;align-items:flex-end}
+.logo-bar{width:4px;background:var(--green);border-radius:1px}
+.topbar-center{flex:1;display:flex;align-items:center;gap:12px}
+.topbar-pill{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+.topbar-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.topbar-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2);cursor:pointer;letter-spacing:.06em;transition:all .2s}
+.topbar-btn.active{background:var(--greendim2);border-color:var(--green3);color:var(--green)}
+
+/* MAIN */
+.main{flex:1;display:flex;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;padding:16px 0}
+.nav-section-lbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt4);letter-spacing:.15em;padding:8px 20px 4px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3);letter-spacing:.08em;transition:all .2s;position:relative;margin:1px 8px;border-radius:6px}
+.nav-item:hover{background:var(--bg3);color:var(--txt2)}
+.nav-item.active{background:var(--greendim2);color:var(--green)}
+.nav-item.active::before{content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--green);border-radius:2px}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-sep{height:1px;background:var(--border);margin:12px 16px}
+.sidebar-bottom{margin-top:auto;padding:0 8px 8px}
+.status-card{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px 14px}
+.sc-lbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3);margin-bottom:6px;letter-spacing:.1em}
+.sc-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.sc-key{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt3)}
+.sc-val{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--green)}
+
+/* CONTENT */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.screen{display:none;flex:1;overflow:hidden;animation:fadein .2s ease}
+.screen.active{display:flex}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+
+/* PANELS */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.panel-title{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt2);letter-spacing:.1em}
+.badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:3px;letter-spacing:.04em}
+.bg{background:var(--greendim2);color:var(--green);border:1px solid var(--green3)}
+.ba{background:#ffb30020;color:var(--amber);border:1px solid #ffb30060}
+.br{background:#ff444420;color:var(--red);border:1px solid #ff444460}
+.bc{background:var(--cyandim);color:var(--cyan);border:1px solid #00e5ff50}
+
+/* RECORD */
+#screen-record{flex-direction:row}
+.rec-left{flex:1;display:flex;flex-direction:column;padding:20px;gap:14px;overflow-y:auto;border-right:1px solid var(--border)}
+.rec-right{width:340px;flex-shrink:0;display:flex;flex-direction:column;padding:20px;gap:14px;overflow-y:auto}
+.freq-lbl{display:flex;justify-content:space-between;padding:4px 16px 10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3)}
+.rec-controls{display:flex;align-items:center;gap:16px}
+.rec-btn{display:flex;align-items:center;gap:10px;background:var(--green);color:#080a08;border:none;border-radius:8px;padding:14px 28px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:background .2s}
+.rec-btn:hover{background:var(--green2)}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:#080a08}
+.rec-info{display:flex;flex-direction:column;gap:2px}
+.ri-lbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3);letter-spacing:.08em}
+.ri-val{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--cyan)}
+.ri-timer{font-size:24px;font-family:'JetBrains Mono',monospace;font-weight:700;line-height:1}
+.detect-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.db-lbl{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--green);letter-spacing:.1em;margin-bottom:10px}
+.db-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+.db-name{font-size:22px;font-weight:700}
+.db-class{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--txt2);margin-top:2px}
+.db-pct{font-size:32px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace}
+.db-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:12px;border-top:1px solid var(--border)}
+.dg{background:var(--bg3);border-radius:6px;padding:8px 10px}
+.dg-lbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3);margin-bottom:3px;letter-spacing:.08em}
+.dg-val{font-size:16px;font-family:'JetBrains Mono',monospace;font-weight:700}
+.dg-u{font-size:9px;color:var(--txt3)}
+.met-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.met-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.met-lbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3);margin-bottom:5px;letter-spacing:.08em}
+.met-val{font-size:20px;font-family:'JetBrains Mono',monospace;font-weight:700}
+.met-u{font-size:10px;color:var(--txt3)}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px}
+.sp-panel{background:var(--bg3);border-radius:6px;height:110px;overflow:hidden}
+
+/* CLASSIFICATION */
+.ci{margin-bottom:12px}
+.ci-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.cn{font-size:13px;font-family:'JetBrains Mono',monospace;font-weight:600}
+.cp{font-size:13px;font-family:'JetBrains Mono',monospace}
+.cn.p{font-size:15px;color:var(--txt)}
+.cp.p{color:var(--green);font-size:15px}
+.cn.s{color:var(--txt3)}
+.cp.s{color:var(--txt3)}
+.bar-t{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.bar-f{height:100%;border-radius:3px;transition:width .7s ease}
+.bar-f.p{background:var(--green)}
+.bar-f.s{background:var(--txt3)}
+.c-note{font-size:11px;color:var(--txt3);padding-top:10px;border-top:1px solid var(--border);line-height:1.6;margin-top:4px}
+
+/* ANALYSIS */
+#screen-analysis{flex-direction:row}
+.ana-left{flex:1;display:flex;flex-direction:column;padding:20px;gap:14px;overflow-y:auto;border-right:1px solid var(--border)}
+.ana-right{width:380px;flex-shrink:0;padding:20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.upload-zone{border:1.5px dashed var(--border3);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.upload-zone:hover{border-color:var(--green3);background:var(--greendim)}
+.ul-lbl{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--txt2);letter-spacing:.06em}
+.ul-sub{font-size:9px;color:var(--txt3);margin-top:4px}
+#file-input{display:none}
+.api-st{border-radius:6px;padding:8px 12px;font-size:10px;font-family:'JetBrains Mono',monospace;border-left:2px solid var(--border2)}
+.api-st.loading{background:#00e5ff10;border-color:var(--cyan);color:var(--cyan)}
+.api-st.success{background:var(--greendim);border-color:var(--green3);color:var(--green)}
+.api-st.error{background:#ff444410;border-color:var(--red);color:var(--red)}
+.act-row{display:flex;gap:8px}
+.btn-sec{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--txt2);font-family:'JetBrains Mono',monospace;font-size:10px;border-radius:7px;padding:10px;cursor:pointer;letter-spacing:.08em;transition:all .2s}
+.btn-sec:hover{border-color:var(--border3);color:var(--txt)}
+.btn-pri{flex:2;background:var(--green);border:none;color:#080a08;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;border-radius:7px;padding:10px;cursor:pointer;letter-spacing:.1em;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-pri:hover{background:var(--green2)}
+.feat-nums{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px;padding-bottom:0}
+.feat-num{background:var(--bg3);border-radius:6px;padding:10px 12px;border-left:2px solid var(--border2)}
+.fn-lbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3);margin-bottom:4px;letter-spacing:.08em}
+.fn-val{font-size:22px;font-family:'JetBrains Mono',monospace;font-weight:700}
+.fn-u{font-size:10px;color:var(--txt3)}
+.mfcc-sec{padding:14px}
+.mfcc-hdr{display:flex;justify-content:space-between;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt2);margin-bottom:10px}
+.mfcc-hdr span{color:var(--txt3);font-size:9px}
+
+/* HISTORY */
+#screen-history{flex-direction:column}
+.hist-top{padding:20px 24px 0;border-bottom:1px solid var(--border)}
+.hist-hr{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:14px}
+.hist-title{font-size:24px;font-weight:700}
+.hist-count{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--green)}
+.hist-count strong{font-size:20px;margin-right:6px}
+.fbar{display:flex;align-items:center;gap:16px;padding-bottom:14px;flex-wrap:wrap}
+.flbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3);letter-spacing:.1em;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--bg3);border:1px solid var(--border);color:var(--txt3);font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 12px;border-radius:5px;cursor:pointer;transition:all .2s;letter-spacing:.05em;white-space:nowrap}
+.chip.active{background:var(--greendim2);border-color:var(--green3);color:var(--green)}
+.conf-row{display:flex;align-items:center;gap:8px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt3)}
+.conf-row input{accent-color:var(--cyan);width:120px}
+.conf-v{color:var(--cyan);min-width:36px}
+.srch{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt);outline:none;width:200px}
+.srch:focus{border-color:var(--border3)}
+.srch::placeholder{color:var(--txt3)}
+.hist-body{flex:1;display:flex;overflow:hidden}
+.hist-list{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.hist-detail{width:400px;flex-shrink:0;border-left:1px solid var(--border);padding:20px;overflow-y:auto}
+.log-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color .2s}
+.log-card:hover{border-color:var(--border3)}
+.log-card.sel{border-color:var(--green3);background:var(--greendim)}
+.lc-inner{display:flex}
+.lc-prev{width:120px;flex-shrink:0;background:var(--bg3);overflow:hidden}
+.lc-body{flex:1;padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+.lc-top{display:flex;justify-content:space-between;align-items:flex-start}
+.lc-name{font-size:15px;font-weight:700}
+.lc-pct-w{text-align:right}
+.lc-pct{font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700}
+.lc-pct.high{color:var(--green)}
+.lc-pct.med{color:var(--amber)}
+.lc-pl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3)}
+.lc-meta{display:flex;align-items:center;gap:12px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt3)}
+.lc-foot{display:flex;align-items:center;justify-content:space-between}
+.lc-tags{display:flex;gap:5px}
+.lc-tag{background:var(--bg3);border:1px solid var(--border);color:var(--txt3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 7px;border-radius:4px}
+.lc-acts{display:flex;gap:6px}
+.ic-btn{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:13px;padding:3px 6px;border-radius:4px;transition:all .2s;line-height:1}
+.ic-btn:hover{color:var(--txt);background:var(--bg4)}
+.btn-sm{background:var(--green);border:none;color:#080a08;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:6px 12px;border-radius:5px;cursor:pointer;letter-spacing:.06em}
+.btn-sm:hover{background:var(--green2)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-bars">
+      <div class="logo-bar" style="height:9px"></div>
+      <div class="logo-bar" style="height:15px"></div>
+      <div class="logo-bar" style="height:11px"></div>
+      <div class="logo-bar" style="height:18px"></div>
+    </div>
+    SIGNALSENSE
+  </div>
+  <div class="topbar-center">
+    <div class="topbar-pill"><div class="pulse-dot"></div>LIVE_BUFFER: 48KHZ</div>
+    <div class="topbar-pill">REF: 1.0 VRMS @ 0dBFS</div>
+    <div class="topbar-pill" style="color:var(--green);border-color:var(--green3)">ENGINE: ONLINE</div>
+  </div>
+  <div class="topbar-right">
+    <div id="clock" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3)">00:00:00</div>
+    <button class="topbar-btn">SETTINGS</button>
+    <button class="topbar-btn active">v2.1.4</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="nav-section-lbl">NAVIGATION</div>
+    <div class="nav-item active" id="nav-record" onclick="sw('record')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="6" width="16" height="12" rx="2"/><line x1="9" y1="10" x2="9" y2="14"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="15" y1="11" x2="15" y2="13"/></svg>
+      RECORD
+    </div>
+    <div class="nav-item" id="nav-analysis" onclick="sw('analysis')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4,16 8,10 12,13 16,7 20,11"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      ANALYSIS
+    </div>
+    <div class="nav-item" id="nav-history" onclick="sw('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,15"/></svg>
+      HISTORY
+    </div>
+    <div class="nav-sep"></div>
+    <div class="nav-section-lbl">SYSTEM</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>
+      SETTINGS
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      EXPORT
+    </div>
+    <div class="sidebar-bottom">
+      <div class="status-card">
+        <div class="sc-lbl">SYSTEM STATUS</div>
+        <div class="sc-row"><span class="sc-key">SAMPLE RATE</span><span class="sc-val">48 kHz</span></div>
+        <div class="sc-row"><span class="sc-key">BUFFER</span><span class="sc-val">READY</span></div>
+        <div class="sc-row"><span class="sc-key">MODEL</span><span class="sc-val">CNN_v3</span></div>
+        <div class="sc-row"><span class="sc-key">CAPTURES</span><span class="sc-val">342</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ===== RECORD ===== -->
+    <div class="screen active" id="screen-record">
+      <div class="rec-left">
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">SPECTRUM ANALYSIS // FREQUENCY-DOMAIN</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge bg">BUFFER_READY</span>
+              <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt3)">REF: 1.0 VRMS @ 0dBFS</span>
+            </div>
+          </div>
+          <canvas id="specCvs" style="width:100%;height:200px"></canvas>
+          <div class="freq-lbl"><span>0 Hz</span><span>4 kHz</span><span>8 kHz</span><span>12 kHz</span><span>16 kHz</span><span>20 kHz</span></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start">
+          <div class="rec-controls">
+            <button class="rec-btn" onclick="toggleRec(this)">
+              <div class="rec-dot" id="rec-dot"></div>
+              <span id="rec-lbl">RECORD</span>
+            </button>
+            <div class="rec-info">
+              <div class="ri-lbl">STATUS</div>
+              <div class="ri-val" id="rec-stat">CAPTURE ACTIVE</div>
+              <div class="ri-timer" id="rec-dur">00:04:22</div>
+            </div>
+          </div>
+          <div class="detect-box">
+            <div class="db-lbl">CURRENT DETECTION</div>
+            <div class="db-row">
+              <div><div class="db-name">MACBOOK PRO</div><div class="db-class">Class: EMI_HIGH_FREQ</div></div>
+              <div class="db-pct">92%</div>
+            </div>
+            <div class="db-grid">
+              <div class="dg"><div class="dg-lbl">LATENT PROB</div><div class="dg-val">0.0042</div></div>
+              <div class="dg"><div class="dg-lbl">INFERENCE</div><div class="dg-val">12<span class="dg-u">ms</span></div></div>
+              <div class="dg"><div class="dg-lbl">PEAK FREQ</div><div class="dg-val" style="color:var(--cyan)">14.22<span class="dg-u"> kHz</span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="met-row">
+          <div class="met-card"><div class="met-lbl">RMS AMPLITUDE</div><div class="met-val" style="color:var(--green)">-24.8</div><div class="met-u">dBFS</div></div>
+          <div class="met-card"><div class="met-lbl">PEAK FREQUENCY</div><div class="met-val" style="color:var(--cyan)">14.22</div><div class="met-u">kHz Center</div></div>
+          <div class="met-card"><div class="met-lbl">ZERO CROSSING RATE</div><div class="met-val">4,812</div><div class="met-u">z/s</div></div>
+        </div>
+
+      </div>
+      <div class="rec-right">
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title" style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block"></span>LIVE_SPECTROGRAM</span>
+            <span class="badge bc">STREAMING</span>
+          </div>
+          <canvas id="lsCvs" style="width:100%;height:160px"></canvas>
+          <div class="freq-lbl"><span>TIME →</span><span>FREQ ↑</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">SIGNAL SPATIALIZATION</span></div>
+          <div class="sp-grid">
+            <div class="sp-panel"><canvas id="sp1" style="width:100%;height:110px"></canvas></div>
+            <div class="sp-panel"><canvas id="sp2" style="width:100%;height:110px"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">REALTIME CLASSIFICATION</span><span class="badge bg">LIVE</span></div>
+          <div style="padding:14px">
+            <div class="ci"><div class="ci-row"><span class="cn p">MACBOOK PRO</span><span class="cp p">92%</span></div><div class="bar-t"><div class="bar-f p" style="width:92%"></div></div></div>
+            <div class="ci"><div class="ci-row"><span class="cn s">LAPTOP_FAN</span><span class="cp s">5.3%</span></div><div class="bar-t"><div class="bar-f s" style="width:5.3%"></div></div></div>
+            <div class="ci" style="margin-bottom:0"><div class="ci-row"><span class="cn s">DESKTOP_FAN</span><span class="cp s">2.7%</span></div><div class="bar-t"><div class="bar-f s" style="width:2.7%"></div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== ANALYSIS ===== -->
+    <div class="screen" id="screen-analysis">
+      <div class="ana-left">
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3)">ANALYSIS_REPORT // ID: SIG-8829-X</span>
+          <span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3)">DURATION: 00:04.22s</span>
+          <span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--txt3)">SAMPLE_RATE: 44.1 KHZ</span>
+        </div>
+        <div style="font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace">ACOUSTIC_SIGNATURE_04</div>
+
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <input type="file" id="file-input" accept=".wav,.mp3,.ogg" onchange="handleUpload(event)">
+          <div style="font-size:18px;margin-bottom:6px">▲</div>
+          <div class="ul-lbl">UPLOAD AUDIO FILE</div>
+          <div class="ul-sub">WAV / MP3 / OGG — envoie vers POST /analyze</div>
+        </div>
+        <div id="api-st" style="display:none" class="api-st"></div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title" style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block"></span>LIVE_SPECTROGRAM</span>
+            <div style="display:flex;gap:12px;font-size:12px;color:var(--txt3);cursor:pointer"><span>▶</span><span>⊕</span></div>
+          </div>
+          <canvas id="lsCvs2" style="width:100%;height:180px"></canvas>
+          <div class="freq-lbl"><span>X_AXIS: TIME (S)</span><span>Y_AXIS: FREQUENCY (HZ)</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">STATIC_WAVEFORM_RENDER</span></div>
+          <div style="padding:14px 16px"><canvas id="wfCvs" style="width:100%;height:70px"></canvas></div>
+        </div>
+
+        <div class="act-row">
+          <button class="btn-sec">EXPORT_DATA</button>
+          <button class="btn-pri" onclick="reanalyze()">RE_ANALYZE_SIGNAL ↺</button>
+        </div>
+      </div>
+
+      <div class="ana-right">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">CLASSIFICATION_RESULT</span>
+            <div style="width:18px;height:18px;border-radius:50%;background:var(--greendim2);border:1px solid var(--green3);display:flex;align-items:center;justify-content:center">
+              <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#00ff87" stroke-width="1.5" fill="none"/></svg>
+            </div>
+          </div>
+          <div style="padding:14px">
+            <div class="ci"><div class="ci-row"><span class="cn p" id="c1n">LAPTOP_FAN</span><span class="cp p" id="c1p">94.2%</span></div><div class="bar-t"><div class="bar-f p" id="c1b" style="width:94.2%"></div></div></div>
+            <div class="ci"><div class="ci-row"><span class="cn s" id="c2n">SMARTPHONE_VIBRATION</span><span class="cp s" id="c2p">4.1%</span></div><div class="bar-t"><div class="bar-f s" id="c2b" style="width:4.1%"></div></div></div>
+            <div class="ci"><div class="ci-row"><span class="cn s" id="c3n">DESKTOP_FAN</span><span class="cp s" id="c3p">1.7%</span></div><div class="bar-t"><div class="bar-f s" id="c3b" style="width:1.7%"></div></div></div>
+            <div class="c-note" id="c-note">Neural Engine Inference complete. High frequency harmonic peaks detected between 2kHz–5kHz. Confidence interval within standard lab parameters.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">EXTRACTED_FEATURES</span></div>
+          <div class="feat-nums">
+            <div class="feat-num"><div class="fn-lbl">RMS_ENERGY</div><div><span class="fn-val" id="rms-v">0.042</span> <span class="fn-u">dBFS</span></div></div>
+            <div class="feat-num"><div class="fn-lbl">ZCR_RATE</div><div><span class="fn-val" id="zcr-v">1284</span> <span class="fn-u">Hz</span></div></div>
+          </div>
+          <div class="mfcc-sec">
+            <div class="mfcc-hdr"><span>MFCC_COEFFICIENTS (01-12)</span><span id="hex-v">HEX_VAL: 0x4F22</span></div>
+            <canvas id="mfccCvs" style="width:100%;height:80px"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">SIGNAL SPATIALIZATION</span></div>
+          <div class="sp-grid">
+            <div class="sp-panel"><canvas id="sp3" style="width:100%;height:110px"></canvas></div>
+            <div class="sp-panel"><canvas id="sp4" style="width:100%;height:110px"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== HISTORY ===== -->
+    <div class="screen" id="screen-history">
+      <div class="hist-top">
+        <div class="hist-hr">
+          <div><div class="hist-title">SIGNAL LOG</div><div class="hist-count"><strong>342</strong>TOTAL CAPTURES RECORDED</div></div>
+          <input type="text" class="srch" placeholder="SEARCH CAPTURES...">
+        </div>
+        <div class="fbar">
+          <span class="flbl">DEVICE TYPE</span>
+          <div class="chips">
+            <div class="chip active">ALL SIGNALS</div>
+            <div class="chip">IOT TERMINAL</div>
+            <div class="chip">SMART METER</div>
+            <div class="chip">HVAC UNIT</div>
+            <div class="chip">INDUSTRIAL</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <span class="flbl">CONFIDENCE</span>
+            <div class="conf-row">
+              <span>0.00</span>
+              <input type="range" min="0" max="100" value="85" oninput="document.getElementById('cv').textContent='0.'+this.value">
+              <span class="conf-v" id="cv">0.85+</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="hist-body">
+        <div class="hist-list">
+
+          <div class="log-card sel" onclick="selLog(this,0)">
+            <div class="lc-inner">
+              <div class="lc-prev"><canvas class="log-wave" id="lw1" style="width:120px;height:80px"></canvas></div>
+              <div class="lc-body">
+                <div><span class="badge bg">LIVE_CAPTURE</span></div>
+                <div class="lc-top">
+                  <div class="lc-name">CARRIER HVAC TERMINAL-04</div>
+                  <div class="lc-pct-w"><div class="lc-pct high">98.2%</div><div class="lc-pl">CONFIDENCE</div></div>
+                </div>
+                <div class="lc-meta"><span>📅 OCT 24, 2023</span><span>⏱ 14:22:05 UTC</span></div>
+                <div class="lc-foot">
+                  <div class="lc-tags"><span class="lc-tag">RF-ID</span><span class="lc-tag">2.4GHZ</span></div>
+                  <div class="lc-acts">
+                    <button class="ic-btn">⤴</button><button class="ic-btn">🗑</button>
+                    <button class="btn-sm" onclick="sw('analysis');event.stopPropagation()">ANALYZE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="log-card" onclick="selLog(this,1)">
+            <div class="lc-inner">
+              <div class="lc-prev"><canvas class="log-wave" id="lw2" style="width:120px;height:80px"></canvas></div>
+              <div class="lc-body">
+                <div><span class="badge ba">WEAK_SIGNAL</span></div>
+                <div class="lc-top">
+                  <div class="lc-name">UNKNOWN LEGACY METER</div>
+                  <div class="lc-pct-w"><div class="lc-pct med">64.5%</div><div class="lc-pl">CONFIDENCE</div></div>
+                </div>
+                <div class="lc-meta"><span>📅 OCT 23, 2023</span><span>⏱ 09:11:42 UTC</span></div>
+                <div class="lc-foot">
+                  <div class="lc-tags"><span class="lc-tag">SUB-GHZ</span></div>
+                  <div class="lc-acts">
+                    <button class="ic-btn">⤴</button><button class="ic-btn">🗑</button>
+                    <button class="btn-sm" onclick="sw('analysis');event.stopPropagation()">ANALYZE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="log-card" onclick="selLog(this,2)">
+            <div class="lc-inner">
+              <div class="lc-prev"><canvas class="log-wave" id="lw3" style="width:120px;height:80px"></canvas></div>
+              <div class="lc-body">
+                <div><span class="badge br">BURST_DETECTED</span></div>
+                <div class="lc-top">
+                  <div class="lc-name">INDUSTRIAL NODE A-12</div>
+                  <div class="lc-pct-w"><div class="lc-pct high">99.9%</div><div class="lc-pl">CONFIDENCE</div></div>
+                </div>
+                <div class="lc-meta"><span>📅 OCT 22, 2023</span><span>⏱ 23:59:01 UTC</span></div>
+                <div class="lc-foot">
+                  <div class="lc-tags"><span class="lc-tag">ZIGBEE</span><span class="lc-tag">MESH</span></div>
+                  <div class="lc-acts">
+                    <button class="ic-btn">⤴</button><button class="ic-btn">🗑</button>
+                    <button class="btn-sm" onclick="sw('analysis');event.stopPropagation()">ANALYZE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:center;padding:14px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt3);cursor:pointer;border:1px dashed var(--border);border-radius:8px">— LOAD PREVIOUS BLOCKS —</div>
+        </div>
+
+        <div class="hist-detail">
+          <div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt3);margin-bottom:4px;letter-spacing:.1em">SELECTED CAPTURE</div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:8px" id="det-name">CARRIER HVAC TERMINAL-04</div>
+          <div style="margin-bottom:16px"><span class="badge bg">LIVE_CAPTURE</span></div>
+          <div class="panel" style="margin-bottom:12px">
+            <div class="panel-header"><span class="panel-title">CLASSIFICATION</span></div>
+            <div style="padding:14px">
+              <div class="ci"><div class="ci-row"><span class="cn p">HVAC TERMINAL</span><span class="cp p">98.2%</span></div><div class="bar-t"><div class="bar-f p" style="width:98.2%"></div></div></div>
+              <div class="ci"><div class="ci-row"><span class="cn s">SMART METER</span><span class="cp s">1.1%</span></div><div class="bar-t"><div class="bar-f s" style="width:1.1%"></div></div></div>
+              <div class="ci" style="margin-bottom:0"><div class="ci-row"><span class="cn s">IOT SENSOR</span><span class="cp s">0.7%</span></div><div class="bar-t"><div class="bar-f s" style="width:0.7%"></div></div></div>
+            </div>
+          </div>
+          <div class="panel" style="margin-bottom:12px">
+            <div class="panel-header"><span class="panel-title">SIGNAL FEATURES</span></div>
+            <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="dg"><div class="dg-lbl">RMS ENERGY</div><div class="dg-val">0.068 <span class="dg-u">dBFS</span></div></div>
+              <div class="dg"><div class="dg-lbl">ZCR RATE</div><div class="dg-val">2104 <span class="dg-u">Hz</span></div></div>
+              <div class="dg"><div class="dg-lbl">PEAK FREQ</div><div class="dg-val" style="color:var(--cyan)">2.4 <span class="dg-u">GHz</span></div></div>
+              <div class="dg"><div class="dg-lbl">DURATION</div><div class="dg-val">08.3 <span class="dg-u">s</span></div></div>
+            </div>
+          </div>
+          <div class="act-row">
+            <button class="btn-sec" style="font-size:9px">EXPORT</button>
+            <button class="btn-pri" onclick="sw('analysis')" style="font-size:9px">OPEN IN ANALYSIS ↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// NAV
+const TABS=['record','analysis','history'];
+function sw(t){
+  TABS.forEach(x=>{
+    document.getElementById('screen-'+x).classList.remove('active');
+    document.getElementById('nav-'+x).classList.remove('active');
+  });
+  document.getElementById('screen-'+t).classList.add('active');
+  document.getElementById('nav-'+t).classList.add('active');
+  if(t==='analysis') setTimeout(initAna,60);
+}
+
+// CLOCK
+setInterval(()=>{
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  document.getElementById('clock').textContent=p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds());
+},1000);
+
+// SPECTRUM
+function spectrum(id,anim){
+  const c=document.getElementById(id); if(!c)return;
+  const ctx=c.getContext('2d');
+  let t=0;
+  function resize(){c.width=c.offsetWidth;c.height=c.offsetHeight||200;}
+  resize();
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx.fillStyle='#0c0f0b';ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#1a2018';ctx.lineWidth=0.5;
+    for(let x=0;x<W;x+=W/6){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=H/4){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    [[2,0.9,'#00ff87'],[1.5,0.5,'#00e5ff'],[1,0.25,'#00ff8750']].forEach(([lw,al,col])=>{
+      ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.globalAlpha=al;
+      for(let i=0;i<=120;i++){
+        const x=i/120*W,f=i/120*20000;
+        const a=H*.38*Math.exp(-Math.pow((f-14000)/4000,2))
+               +H*.18*Math.exp(-Math.pow((f-3000)/1500,2))
+               +H*.12*Math.exp(-Math.pow((f-8000)/2000,2))
+               +(anim?Math.sin(t*2+i*.25)*5:0);
+        i===0?ctx.moveTo(x,H-a):ctx.lineTo(x,H-a);
+      }
+      ctx.stroke();ctx.globalAlpha=1;
+    });
+    if(anim){t+=.04;requestAnimationFrame(draw);}
+  }
+  draw();
+  window.addEventListener('resize',()=>{resize();if(!anim)draw();});
+}
+
+// LIVE SPEC
+function liveSpec(id){
+  const c=document.getElementById(id);if(!c)return;
+  const ctx=c.getContext('2d');
+  function rs(){c.width=c.offsetWidth;c.height=c.offsetHeight||160;}
+  rs(); let t=0;
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx.fillStyle='rgba(12,15,11,.2)';ctx.fillRect(0,0,W,H);
+    const col=ctx.createImageData(1,H);
+    for(let y=0;y<H;y++){
+      const f=(H-y)/H*20000;
+      let v=.85*Math.exp(-Math.pow((f-14000)/3000,2))*Math.random()
+           +.45*Math.exp(-Math.pow((f-3000)/1000,2))*Math.random()
+           +.1*Math.random();
+      v=Math.min(1,v+Math.sin(t*3+y*.05)*.08);
+      col.data[y*4]=v>.6?0:v*40|0;
+      col.data[y*4+1]=v*255|0;
+      col.data[y*4+2]=v>.5?v*160|0:0;
+      col.data[y*4+3]=v*230|0;
+    }
+    ctx.putImageData(col,W-1,0);
+    ctx.drawImage(c,-1,0,W,H,0,0,W,H);
+    t+=.05;requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// MFCC
+function mfcc(){
+  const c=document.getElementById('mfccCvs');if(!c)return;
+  const ctx=c.getContext('2d');
+  c.width=c.offsetWidth;c.height=80;
+  const W=c.width,H=80;
+  ctx.clearRect(0,0,W,H);
+  [.8,.6,.9,.4,.7,.5,.85,.3,.6,.75,.45,.65].forEach((v,i)=>{
+    const bw=(W-10)/12,x=5+i*bw+2,bh=v*(H-8);
+    const g=ctx.createLinearGradient(0,H-bh,0,H);
+    g.addColorStop(0,'#00ff87');g.addColorStop(1,'#009950');
+    ctx.fillStyle=g;ctx.fillRect(x,H-bh,bw-4,bh);
+  });
+}
+
+// WAVEFORM
+function waveform(){
+  const c=document.getElementById('wfCvs');if(!c)return;
+  const ctx=c.getContext('2d');
+  c.width=c.offsetWidth;c.height=70;
+  const W=c.width,H=70;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#00ff87';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<=W;i++){
+    const t=i/W;
+    const y=H/2+Math.sin(t*40)*H*.18*Math.exp(-Math.pow(t-.5,2)*8)+Math.sin(t*110)*H*.07+Math.random()*2.5-1.25;
+    i===0?ctx.moveTo(i,y):ctx.lineTo(i,y);
+  }
+  ctx.stroke();
+}
+
+// LOG WAVE
+function logWave(id,col,type){
+  const c=document.getElementById(id);if(!c)return;
+  const ctx=c.getContext('2d');
+  c.width=120;c.height=80;
+  ctx.fillStyle='#0e110d';ctx.fillRect(0,0,120,80);
+  if(type==='burst'){
+    for(let i=0;i<16;i++){const x=i/16*112+4,bh=Math.random()*60+10;ctx.fillStyle=col+'88';ctx.fillRect(x,80-bh,5,bh);}
+  } else {
+    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();
+    for(let i=0;i<=120;i++){const t=i/120,a=type==='weak'?.12:.3,y=40+Math.sin(t*25+Math.random()*.5)*40*a;i===0?ctx.moveTo(i,y):ctx.lineTo(i,y);}
+    ctx.stroke();
+  }
+}
+
+// SPATIAL
+function spatial(id,dot){
+  const c=document.getElementById(id);if(!c)return;
+  const ctx=c.getContext('2d');
+  c.width=c.offsetWidth||160;c.height=c.offsetHeight||110;
+  const W=c.width,H=c.height;
+  ctx.fillStyle='#0e110d';ctx.fillRect(0,0,W,H);
+  [.3,.6,.9].forEach(r=>{ctx.beginPath();ctx.arc(W/2,H/2,r*Math.min(W,H)/2,0,Math.PI*2);ctx.strokeStyle='#1e2a1a';ctx.lineWidth=.5;ctx.stroke();});
+  ctx.strokeStyle='#1e2a1a';ctx.lineWidth=.5;
+  ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  if(dot){ctx.fillStyle='#00ff87';ctx.fillRect(dot.x*W-4,dot.y*H-4,8,8);}
+}
+
+// INIT ANALYSIS
+function initAna(){
+  liveSpec('lsCvs2');mfcc();waveform();
+  spatial('sp3',{x:.6,y:.4});spatial('sp4',null);
+}
+
+// RECORD
+let rec=false,rInt=null,rSec=0;
+function toggleRec(){
+  rec=!rec;
+  if(rec){
+    document.getElementById('rec-lbl').textContent='STOP';
+    document.getElementById('rec-dot').style.animation='pulse .5s infinite';
+    document.getElementById('rec-stat').textContent='RECORDING...';
+    document.getElementById('rec-stat').style.color='#ff4444';
+    rInt=setInterval(()=>{rSec++;const m=String(Math.floor(rSec/60)).padStart(2,'0'),s=String(rSec%60).padStart(2,'0');document.getElementById('rec-dur').textContent='00:'+m+':'+s;},1000);
+  } else {
+    document.getElementById('rec-lbl').textContent='RECORD';
+    document.getElementById('rec-dot').style.animation='none';
+    document.getElementById('rec-stat').textContent='CAPTURE ACTIVE';
+    document.getElementById('rec-stat').style.color='#00e5ff';
+    clearInterval(rInt);rSec=0;document.getElementById('rec-dur').textContent='00:04:22';
+  }
+}
+
+// UPLOAD → FastAPI
+async function handleUpload(e){
+  const f=e.target.files[0];if(!f)return;
+  const st=document.getElementById('api-st');
+  st.style.display='block';st.className='api-st loading';
+  st.textContent='▷ Envoi vers /analyze — '+f.name+'...';
+  
+  try{
+    const fd=new FormData();
+    fd.append('file',f);
+    
+    // Assurez-vous que l'URL correspond à votre backend FastAPI (ex: 'http://localhost:8000/analyze')
+    const API='http://localhost:8000/analyze'; 
+    const res=await fetch(API,{method:'POST',body:fd});
+    
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const r=await res.json();
+    
+    st.className='api-st success';
+    // Utilisation de r.device.label
+    st.textContent='✓ Analyse complète — '+(r.device?.label || 'OK');
+    
+    // 1. Mise à jour de la classification
+    if(r.device){
+      // Convertir la confiance (ex: 0.923) en pourcentage (92.3%)
+      const pct = (r.device.confidence * 100).toFixed(1);
+      
+      // Mettre à jour le premier résultat
+      document.getElementById('c1n').textContent = r.device.label.toUpperCase();
+      document.getElementById('c1p').textContent = pct + '%';
+      document.getElementById('c1b').style.width = pct + '%';
+      
+      // Réinitialiser les barres 2 et 3 vu que le backend ne renvoie qu'un seul résultat pour le moment
+      document.getElementById('c2n').textContent = '-';
+      document.getElementById('c2p').textContent = '0%';
+      document.getElementById('c2b').style.width = '0%';
+      document.getElementById('c3n').textContent = '-';
+      document.getElementById('c3p').textContent = '0%';
+      document.getElementById('c3b').style.width = '0%';
+      
+      // Mise à jour de la note technique
+      document.getElementById('c-note').textContent = `Inference complete for ${r.device.label} based on ${r.segments} segments.`;
+    }
+
+    // 2. Mise à jour des "Features" extraites
+    if(r.features){
+      // Limiter à 3 décimales pour un affichage propre
+      if(r.features.rms !== undefined) document.getElementById('rms-v').textContent = r.features.rms.toFixed(3);
+      if(r.features.zcr !== undefined) document.getElementById('zcr-v').textContent = Math.round(r.features.zcr);
+      
+      // (Optionnel) Si vous voulez utiliser dominant_freq ou energy plus tard, 
+      // ils sont disponibles via r.features.dominant_freq, etc.
+    }
+    
+    mfcc();waveform();
+  }catch(err){
+    st.className='api-st error';
+    st.textContent='⚠ Erreur: '+err.message;
+  }
+}
+
+function reanalyze(){
+  const st=document.getElementById('api-st');
+  st.style.display='block';st.className='api-st loading';st.textContent='▷ Re-running neural inference...';
+  setTimeout(()=>{st.className='api-st success';st.textContent='✓ Re-analyse terminée';mfcc();waveform();},1800);
+}
+
+// CHIPS
+document.querySelectorAll('.chip').forEach(ch=>{
+  ch.addEventListener('click',()=>{
+    ch.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    ch.classList.add('active');
+  });
+});
+
+// LOG SELECT
+function selLog(el){
+  document.querySelectorAll('.log-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+// INIT
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    spectrum('specCvs',true);
+    liveSpec('lsCvs');
+    spatial('sp1',{x:.6,y:.4});
+    spatial('sp2',null);
+    logWave('lw1','#00e5ff','normal');
+    logWave('lw2','#ffb300','weak');
+    logWave('lw3','#00ff87','burst');
+  },150);
+});
+</script>
+</body>
+</html>

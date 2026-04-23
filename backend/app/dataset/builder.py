@@ -1,59 +1,60 @@
 import os
-import pandas as pd
-from backend.app.core.config import RAW_DATA_DIR
-from backend.app.core.config import DATA_DIR
 import numpy as np
+import librosa
+from backend.app.core.config import RAW_DATA_DIR, DATA_DIR,PROCESSED_DIR
+from backend.app.dsp.filter import low_pass_filter
+from backend.app.dsp.segmentation import split_signal
+from backend.app.features.spectral import extract_features
 
-ESC50_PATH = os.path.join(RAW_DATA_DIR, "esc50")
 
-TARGET_CLASSES = [
-    "engine",
-    "air_conditioner",
-    "vacuum_cleaner",
-    "washing_machine"
-]
-
-def load_esc50():
-    csv_path = os.path.join(ESC50_PATH, "meta", "esc50.csv")
-    audio_path = os.path.join(ESC50_PATH, "audio")
-
-    df = pd.read_csv(csv_path)
-    df = df[df["category"].isin(TARGET_CLASSES)]
-
+def load_raw():
+    """Charge tous les .wav depuis data/raw/label/ → retourne liste (path, label)."""
     data = []
-    for _, row in df.iterrows():
-        file_path = os.path.join(audio_path, row["filename"])
-        data.append((file_path, row["category"]))
-
+    for label in os.listdir(PROCESSED_DIR):  # ← lit processed/ sans clusters
+        folder = os.path.join(PROCESSED_DIR, label)
+        if not os.path.isdir(folder):
+            continue
+        for f in os.listdir(folder):
+            if f.lower().endswith(".wav"):
+                data.append((os.path.join(folder, f), label))
     return data
 
 
-def load_personal():
-    base_path = os.path.join(RAW_DATA_DIR, "personal")
+def extract_features_file(file_path):
+    """Pipeline DSP complet sur un fichier → vecteur moyen."""
+    signal, sr = librosa.load(file_path, sr=22050, mono=True)
+    segments = split_signal(low_pass_filter(signal), sr)
+    arrays = [list(extract_features(seg, sr).values()) for seg in segments]
+    result = np.mean(arrays, axis=0)
+    return np.nan_to_num(result, nan=0.0)
 
-    data = []
-    for label in os.listdir(base_path):
-        folder = os.path.join(base_path, label)
-
-        for file in os.listdir(folder):
-            path = os.path.join(folder, file)
-            data.append((path, label))
-
-    return data
-
-def load_dataset():
-    path = os.path.join(DATA_DIR, "datasets")
-
-    X = np.load(os.path.join(path, "X.npy"))
-    y = np.load(os.path.join(path, "y.npy"))
-
-    return X, y
 
 def build_dataset():
-    esc50_data = load_esc50()
-    personal_data = load_personal()
+    """Construit X, y depuis data/raw/ et sauvegarde dans data/datasets/."""
+    all_data = load_raw()
+    X, y = [], []
 
-    # Combine datasets and preprocess
-    # ... (preprocessing logic)
+    for i, (path, label) in enumerate(all_data):
+        try:
+            X.append(extract_features_file(path))
+            y.append(label)
+        except Exception as e:
+            print(f"⚠️  Ignoré {os.path.basename(path)}: {e}")
+        if (i+1) % 50 == 0:
+            print(f"   {i+1}/{len(all_data)}...")
 
-    return esc50_data,personal_data
+    X, y = np.array(X), np.array(y)
+
+    out = os.path.join(DATA_DIR, "datasets")
+    os.makedirs(out, exist_ok=True)
+    np.save(os.path.join(out, "X.npy"), X)
+    np.save(os.path.join(out, "y.npy"), y)
+    print(f"✅ Dataset : {X.shape[0]} samples, {len(set(y))} classes")
+    return X, y
+
+
+def load_dataset():
+    """Charge un dataset déjà construit."""
+    path = os.path.join(DATA_DIR, "datasets")
+    return np.load(os.path.join(path, "X.npy")), \
+           np.load(os.path.join(path, "y.npy"), allow_pickle=True)
