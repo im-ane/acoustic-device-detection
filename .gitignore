@@ -17,3 +17,6 @@ backend/models_saved/
 
 # OS
 .DS_Store.env
+*.wav
+*Zone.Identifier
+test_*.wav
